@@ -1,0 +1,17 @@
+# Core dependencies for Hybrid N-gram + LSTM Code Suggestion System
+
+# Progress bars for training
+tqdm>=4.65.0
+
+# Deep learning framework for LSTM
+torch>=2.0.0
+
+# Data handling
+pandas>=2.0.0
+numpy>=1.24.0
+
+# Kaggle dataset loading
+kagglehub>=0.2.0
+
+# Web application
+flask>=2.3.0

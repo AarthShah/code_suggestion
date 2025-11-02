@@ -1,0 +1,23 @@
+how{
+  "version": "1.0.0",
+  "created_at": "2025-10-28 00:21:18",
+  "description": "Hybrid N-gram + LSTM Code Suggestion Model",
+  "config": {
+    "ngram_n": 15,
+    "vocab_size": 50000,
+    "lstm_hidden_dim": 256,
+    "lstm_layers": 2,
+    "epochs": 4,
+    "dataset_size": 18612
+  },
+  "performance": {
+    "ngram_perplexity": 59035.45583448614,
+    "lstm_train_loss": 1.127833087669647,
+    "lstm_val_loss": 3.8861832269832948
+  },
+  "files": {
+    "vocabulary": "data/processed/vocabulary_best.pkl",
+    "ngram_model": "data/processed/ngram_best_model.pkl",
+    "lstm_model": "data/processed/lstm_best_model.pth"
+  }
+}

@@ -1,0 +1,816 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Code Suggestion System</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            background-color: #1e1e1e;
+            color: #d4d4d4;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Header */
+        .header {
+            background-color: #252526;
+            padding: 12px 20px;
+            border-bottom: 1px solid #3c3c3c;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .header h1 {
+            font-size: 16px;
+            font-weight: 500;
+            color: #cccccc;
+        }
+
+        .model-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            font-size: 12px;
+            color: #858585;
+        }
+
+        .model-badge {
+            background-color: #0e639c;
+            color: #ffffff;
+            padding: 4px 10px;
+            border-radius: 3px;
+            font-weight: 500;
+        }
+
+        /* Main Content */
+        .main-content {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        /* Editor Section */
+        .editor-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid #3c3c3c;
+        }
+
+        .editor-header {
+            background-color: #252526;
+            padding: 10px 20px;
+            border-bottom: 1px solid #3c3c3c;
+            font-size: 13px;
+            color: #858585;
+        }
+
+        .editor-container {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+
+        #codeEditor {
+            width: 100%;
+            height: 100%;
+            background-color: #1e1e1e;
+            color: #d4d4d4;
+            border: none;
+            padding: 20px;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            resize: none;
+            outline: none;
+            tab-size: 4;
+        }
+
+        /* Suggestions Panel */
+        .suggestions-panel {
+            width: 400px;
+            background-color: #252526;
+            display: flex;
+            flex-direction: column;
+            border-left: 1px solid #3c3c3c;
+        }
+
+        .panel-header {
+            padding: 12px 20px;
+            border-bottom: 1px solid #3c3c3c;
+            font-size: 13px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .panel-controls {
+            display: flex;
+            gap: 10px;
+        }
+
+        .toggle-btn {
+            background-color: #3c3c3c;
+            color: #cccccc;
+            border: none;
+            padding: 4px 10px;
+            border-radius: 3px;
+            font-size: 11px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .toggle-btn:hover {
+            background-color: #505050;
+        }
+
+        .toggle-btn.active {
+            background-color: #0e639c;
+            color: #ffffff;
+        }
+
+        .suggestions-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+        }
+
+        .suggestion-item {
+            background-color: #2d2d30;
+            border: 1px solid #3c3c3c;
+            border-radius: 4px;
+            padding: 12px 15px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .suggestion-item:hover {
+            background-color: #37373d;
+            border-color: #0e639c;
+        }
+
+        .suggestion-item.selected {
+            background-color: #094771;
+            border-color: #0e639c;
+        }
+
+        .suggestion-token {
+            font-size: 14px;
+            font-weight: 500;
+            color: #4ec9b0;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+        }
+
+        .suggestion-prob {
+            font-size: 12px;
+            color: #858585;
+        }
+
+        .suggestion-bar {
+            width: 100%;
+            height: 4px;
+            background-color: #3c3c3c;
+            border-radius: 2px;
+            margin-top: 8px;
+            overflow: hidden;
+        }
+
+        .suggestion-bar-fill {
+            height: 100%;
+            background-color: #0e639c;
+            border-radius: 2px;
+            transition: width 0.3s;
+        }
+
+        .no-suggestions {
+            text-align: center;
+            color: #858585;
+            padding: 40px 20px;
+            font-size: 13px;
+        }
+
+        /* Autocomplete Dropdown */
+        .autocomplete-dropdown {
+            position: absolute;
+            background-color: #252526;
+            border: 1px solid #3c3c3c;
+            border-radius: 4px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            min-width: 200px;
+            max-height: 300px;
+            overflow-y: auto;
+            display: none;
+        }
+
+        .autocomplete-item {
+            padding: 8px 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 13px;
+            border-bottom: 1px solid #2d2d30;
+        }
+
+        .autocomplete-item:last-child {
+            border-bottom: none;
+        }
+
+        .autocomplete-item:hover,
+        .autocomplete-item.selected {
+            background-color: #094771;
+        }
+
+        .autocomplete-token {
+            color: #4ec9b0;
+            font-weight: 500;
+        }
+
+        .autocomplete-prob {
+            color: #858585;
+            font-size: 11px;
+        }
+
+        /* Status Bar */
+        .status-bar {
+            background-color: #007acc;
+            padding: 6px 20px;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            color: #ffffff;
+        }
+
+        .status-left {
+            display: flex;
+            gap: 20px;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        /* Loading Indicator */
+        .loading {
+            display: none;
+            color: #858585;
+            font-size: 12px;
+            padding: 10px 20px;
+            text-align: center;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        /* Scrollbar Styling */
+        ::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #1e1e1e;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #424242;
+            border-radius: 5px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #4e4e4e;
+        }
+
+        /* Keyboard Hints */
+        .keyboard-hints {
+            padding: 15px 20px;
+            background-color: #2d2d30;
+            border-top: 1px solid #3c3c3c;
+            font-size: 11px;
+            color: #858585;
+        }
+
+        .hint-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+
+        .hint-key {
+            background-color: #3c3c3c;
+            padding: 2px 6px;
+            border-radius: 3px;
+            margin-right: 8px;
+            font-weight: 500;
+            color: #cccccc;
+        }
+
+        /* Smart Completion Panel */
+        .smart-completion {
+            margin: 10px;
+            background-color: #2d2d30;
+            border: 1px solid #3c3c3c;
+            border-radius: 4px;
+            display: none;
+        }
+
+        .smart-completion.active {
+            display: block;
+        }
+
+        .smart-header {
+            padding: 10px 15px;
+            border-bottom: 1px solid #3c3c3c;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .smart-title {
+            font-size: 12px;
+            font-weight: 500;
+            color: #4ec9b0;
+        }
+
+        .confidence-badge {
+            background-color: #0e639c;
+            color: #ffffff;
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-size: 10px;
+        }
+
+        .smart-body {
+            padding: 15px;
+        }
+
+        .smart-description {
+            color: #858585;
+            font-size: 11px;
+            margin-bottom: 10px;
+        }
+
+        .smart-code {
+            background-color: #1e1e1e;
+            border: 1px solid #3c3c3c;
+            border-radius: 3px;
+            padding: 12px;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.6;
+            color: #d4d4d4;
+            white-space: pre;
+            overflow-x: auto;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .smart-actions {
+            padding: 10px 15px;
+            border-top: 1px solid #3c3c3c;
+            display: flex;
+            gap: 10px;
+        }
+
+        .smart-btn {
+            background-color: #0e639c;
+            color: #ffffff;
+            border: none;
+            padding: 6px 15px;
+            border-radius: 3px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .smart-btn:hover {
+            background-color: #1177bb;
+        }
+
+        .smart-btn.secondary {
+            background-color: #3c3c3c;
+        }
+
+        .smart-btn.secondary:hover {
+            background-color: #505050;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="header">
+        <h1>🎯 Python Code Suggestion System</h1>
+        <div class="model-info">
+            <span class="model-badge">Hybrid N-gram + LSTM</span>
+            <span id="modelDesc">Loading...</span>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Editor Section -->
+        <div class="editor-section">
+            <div class="editor-header">
+                editor.py — Python
+            </div>
+            <div class="editor-container">
+                <textarea id="codeEditor" placeholder="# Start typing Python code here...
+# Press Tab or Arrow keys to accept suggestions
+# Try: def add(a, b
+
+def calculate(x, y):
+    return x + y
+
+for i in range(
+"></textarea>
+                <div class="autocomplete-dropdown" id="autocompleteDropdown"></div>
+            </div>
+        </div>
+
+        <!-- Suggestions Panel -->
+        <div class="suggestions-panel">
+            <div class="panel-header">
+                <span>💡 Top Suggestions</span>
+                <div class="panel-controls">
+                    <button class="toggle-btn active" id="lstmToggle" title="Toggle LSTM">LSTM</button>
+                    <button class="toggle-btn active" id="smartToggle" title="Toggle Smart Mode">🧠 Smart</button>
+                </div>
+            </div>
+            
+            <!-- Smart Completion Preview -->
+            <div class="smart-completion" id="smartCompletion">
+                <div class="smart-header">
+                    <span class="smart-title" id="smartTitle">✨ Smart Completion</span>
+                    <span class="confidence-badge" id="confidenceBadge">95%</span>
+                </div>
+                <div class="smart-body">
+                    <div class="smart-description" id="smartDescription"></div>
+                    <div class="smart-code" id="smartCode"></div>
+                </div>
+                <div class="smart-actions">
+                    <button class="smart-btn" onclick="acceptSmartCompletion()">✓ Accept (Ctrl+Enter)</button>
+                    <button class="smart-btn secondary" onclick="hideSmartCompletion()">✗ Dismiss</button>
+                </div>
+            </div>
+            
+            <div class="suggestions-list" id="suggestionsList">
+                <div class="no-suggestions">Type code to see suggestions...</div>
+            </div>
+            <div class="loading" id="loadingIndicator">⏳ Getting suggestions...</div>
+            <div class="keyboard-hints">
+                <div class="hint-item">
+                    <span class="hint-key">Tab</span>
+                    <span>Accept selected suggestion</span>
+                </div>
+                <div class="hint-item">
+                    <span class="hint-key">↑ ↓</span>
+                    <span>Navigate suggestions</span>
+                </div>
+                <div class="hint-item">
+                    <span class="hint-key">Esc</span>
+                    <span>Close suggestions</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Status Bar -->
+    <div class="status-bar">
+        <div class="status-left">
+            <div class="status-item">
+                <span>🚀</span>
+                <span id="statusText">Ready</span>
+            </div>
+            <div class="status-item">
+                <span>📊</span>
+                <span id="vocabSize">50K tokens</span>
+            </div>
+        </div>
+        <div class="status-item">
+            <span>Line <span id="lineNumber">1</span>, Col <span id="colNumber">1</span></span>
+        </div>
+    </div>
+
+    <script>
+        // Global state
+        let currentSuggestions = [];
+        let currentSmartCompletion = null;
+        let selectedIndex = 0;
+        let useLSTM = true;
+        let useSmartMode = true;
+        let debounceTimer = null;
+
+        // DOM elements
+        const editor = document.getElementById('codeEditor');
+        const suggestionsList = document.getElementById('suggestionsList');
+        const autocompleteDropdown = document.getElementById('autocompleteDropdown');
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        const lstmToggle = document.getElementById('lstmToggle');
+        const smartToggle = document.getElementById('smartToggle');
+        const smartCompletion = document.getElementById('smartCompletion');
+        const smartTitle = document.getElementById('smartTitle');
+        const smartDescription = document.getElementById('smartDescription');
+        const smartCode = document.getElementById('smartCode');
+        const confidenceBadge = document.getElementById('confidenceBadge');
+        const statusText = document.getElementById('statusText');
+        const lineNumber = document.getElementById('lineNumber');
+        const colNumber = document.getElementById('colNumber');
+
+        // Load model info
+        async function loadModelInfo() {
+            try {
+                const response = await fetch('/api/model/info');
+                const data = await response.json();
+                document.getElementById('modelDesc').textContent = `${data.vocab_size.toLocaleString()} tokens, ${data.ngram_contexts.toLocaleString()} contexts`;
+                document.getElementById('vocabSize').textContent = `${(data.vocab_size / 1000).toFixed(0)}K tokens`;
+            } catch (error) {
+                console.error('Error loading model info:', error);
+            }
+        }
+
+        // Get suggestions from API
+        async function getSuggestions(code) {
+            try {
+                loadingIndicator.classList.add('active');
+                statusText.textContent = 'Getting suggestions...';
+
+                // Use smart suggest if enabled
+                const endpoint = useSmartMode ? '/api/smart_suggest' : '/api/suggest';
+                const body = useSmartMode 
+                    ? { code: code }
+                    : { code: code, top_k: 5, use_lstm: useLSTM };
+
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(body),
+                });
+
+                const data = await response.json();
+                currentSuggestions = data.suggestions || [];
+                selectedIndex = 0;
+
+                // Handle smart completion
+                if (useSmartMode && data.full_completion) {
+                    currentSmartCompletion = data.full_completion;
+                    showSmartCompletion(data);
+                } else {
+                    hideSmartCompletion();
+                }
+
+                updateSuggestionsList();
+                updateAutocompleteDropdown();
+
+                statusText.textContent = 'Ready';
+                loadingIndicator.classList.remove('active');
+
+            } catch (error) {
+                console.error('Error getting suggestions:', error);
+                statusText.textContent = 'Error';
+                loadingIndicator.classList.remove('active');
+            }
+        }
+
+        // Update suggestions list panel
+        function updateSuggestionsList() {
+            if (currentSuggestions.length === 0) {
+                suggestionsList.innerHTML = '<div class="no-suggestions">No suggestions available</div>';
+                return;
+            }
+
+            suggestionsList.innerHTML = currentSuggestions.map((item, index) => `
+                <div class="suggestion-item ${index === selectedIndex ? 'selected' : ''}" 
+                     onclick="selectSuggestion(${index})"
+                     data-index="${index}">
+                    <div style="flex: 1;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                            <span class="suggestion-token">${escapeHtml(item.token)}</span>
+                            <span class="suggestion-prob">${item.percentage}</span>
+                        </div>
+                        <div class="suggestion-bar">
+                            <div class="suggestion-bar-fill" style="width: ${item.probability * 100}%"></div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Update autocomplete dropdown
+        function updateAutocompleteDropdown() {
+            if (currentSuggestions.length === 0) {
+                autocompleteDropdown.style.display = 'none';
+                return;
+            }
+
+            const caretPos = getCaretCoordinates();
+            autocompleteDropdown.style.left = `${caretPos.x}px`;
+            autocompleteDropdown.style.top = `${caretPos.y + 20}px`;
+
+            autocompleteDropdown.innerHTML = currentSuggestions.map((item, index) => `
+                <div class="autocomplete-item ${index === selectedIndex ? 'selected' : ''}" 
+                     onclick="selectSuggestion(${index})"
+                     data-index="${index}">
+                    <span class="autocomplete-token">${escapeHtml(item.token)}</span>
+                    <span class="autocomplete-prob">${item.percentage}</span>
+                </div>
+            `).join('');
+
+            autocompleteDropdown.style.display = 'block';
+        }
+
+        // Get caret coordinates for dropdown positioning
+        function getCaretCoordinates() {
+            const editorRect = editor.getBoundingClientRect();
+            return {
+                x: 100, // Simplified positioning
+                y: 100
+            };
+        }
+
+        // Select and apply suggestion
+        function selectSuggestion(index) {
+            if (index < 0 || index >= currentSuggestions.length) return;
+
+            selectedIndex = index;
+            const suggestion = currentSuggestions[index];
+
+            // Insert suggestion at cursor
+            const cursorPos = editor.selectionStart;
+            const textBefore = editor.value.substring(0, cursorPos);
+            const textAfter = editor.value.substring(cursorPos);
+            
+            // Add space before token if needed (except for specific characters)
+            const needsSpace = textBefore.length > 0 && 
+                              ![' ', '\n', '\t', '(', '[', '{'].includes(textBefore[textBefore.length - 1]) &&
+                              ![')', ']', '}', ':', ',', '.', ';'].includes(suggestion.token);
+            
+            const insertText = (needsSpace ? ' ' : '') + suggestion.token;
+            editor.value = textBefore + insertText + textAfter;
+            editor.selectionStart = editor.selectionEnd = cursorPos + insertText.length;
+
+            // Clear suggestions
+            currentSuggestions = [];
+            updateSuggestionsList();
+            autocompleteDropdown.style.display = 'none';
+
+            // Focus back on editor
+            editor.focus();
+
+            // Trigger new suggestions
+            handleInput();
+        }
+
+        // Handle editor input
+        function handleInput() {
+            clearTimeout(debounceTimer);
+            
+            // Update cursor position
+            updateCursorPosition();
+
+            debounceTimer = setTimeout(() => {
+                const code = editor.value;
+                if (code.trim().length > 0) {
+                    getSuggestions(code);
+                } else {
+                    currentSuggestions = [];
+                    updateSuggestionsList();
+                    autocompleteDropdown.style.display = 'none';
+                }
+            }, 300); // 300ms debounce
+        }
+
+        // Update cursor position in status bar
+        function updateCursorPosition() {
+            const text = editor.value.substring(0, editor.selectionStart);
+            const lines = text.split('\n');
+            lineNumber.textContent = lines.length;
+            colNumber.textContent = lines[lines.length - 1].length + 1;
+        }
+
+        // Handle keyboard navigation
+        function handleKeyDown(e) {
+            if (currentSuggestions.length === 0) return;
+
+            switch(e.key) {
+                case 'ArrowDown':
+                    e.preventDefault();
+                    selectedIndex = (selectedIndex + 1) % currentSuggestions.length;
+                    updateSuggestionsList();
+                    updateAutocompleteDropdown();
+                    break;
+
+                case 'ArrowUp':
+                    e.preventDefault();
+                    selectedIndex = (selectedIndex - 1 + currentSuggestions.length) % currentSuggestions.length;
+                    updateSuggestionsList();
+                    updateAutocompleteDropdown();
+                    break;
+
+                case 'Tab':
+                    if (currentSuggestions.length > 0) {
+                        e.preventDefault();
+                        selectSuggestion(selectedIndex);
+                    }
+                    break;
+
+                case 'Escape':
+                    e.preventDefault();
+                    currentSuggestions = [];
+                    updateSuggestionsList();
+                    autocompleteDropdown.style.display = 'none';
+                    break;
+            }
+        }
+
+        // Toggle LSTM
+        lstmToggle.addEventListener('click', () => {
+            useLSTM = !useLSTM;
+            lstmToggle.classList.toggle('active', useLSTM);
+            handleInput();
+        });
+
+        // Toggle Smart Mode
+        smartToggle.addEventListener('click', () => {
+            useSmartMode = !useSmartMode;
+            smartToggle.classList.toggle('active', useSmartMode);
+            if (!useSmartMode) {
+                hideSmartCompletion();
+            }
+            handleInput();
+        });
+
+        // Show smart completion
+        function showSmartCompletion(data) {
+            smartCompletion.classList.add('active');
+            smartTitle.textContent = data.intent ? `✨ ${data.intent}` : '✨ Smart Completion';
+            smartDescription.textContent = data.description || 'Complete code block detected';
+            smartCode.textContent = data.full_completion;
+            confidenceBadge.textContent = `${(data.confidence * 100).toFixed(0)}%`;
+        }
+
+        // Hide smart completion
+        function hideSmartCompletion() {
+            smartCompletion.classList.remove('active');
+            currentSmartCompletion = null;
+        }
+
+        // Accept smart completion
+        function acceptSmartCompletion() {
+            if (currentSmartCompletion) {
+                editor.value = currentSmartCompletion;
+                editor.selectionStart = editor.selectionEnd = currentSmartCompletion.length;
+                hideSmartCompletion();
+                editor.focus();
+                handleInput();
+            }
+        }
+
+        // Handle Ctrl+Enter for smart completion
+        editor.addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.key === 'Enter' && currentSmartCompletion) {
+                e.preventDefault();
+                acceptSmartCompletion();
+            }
+        });
+
+        // Editor event listeners
+        editor.addEventListener('input', handleInput);
+        editor.addEventListener('keydown', handleKeyDown);
+        editor.addEventListener('click', updateCursorPosition);
+
+        // Utility function
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Initialize
+        loadModelInfo();
+        editor.focus();
+    </script>
+</body>
+</html>
