@@ -4,16 +4,10 @@ Provides real-time code completion with VS Code-like interface
 """
 from flask import Flask, render_template, request, jsonify
 import os
-import torch
-from src.ngram.ast_tokenizer import ASTTokenizer, VocabularyManager
-from src.ngram.enhanced_model import EnhancedNGramModel
-from src.ngram.lstm_model import LSTMTrainer
-from src.ngram.hybrid_model import HybridCodeCompleter
-from src.ngram.smart_completer import SmartCodeCompleter
 
 app = Flask(__name__)
 
-# Global model instances
+# Global model instances - lazy loaded
 completer = None
 smart_completer = None
 vocab = None
@@ -34,12 +28,23 @@ MODELS = {
 current_model = 'best'
 
 
-def load_model(model_name='best'):
-    """Load the specified model"""
+def ensure_models_loaded():
+    """Lazy load models only when needed"""
     global completer, smart_completer, vocab, ngram_model, lstm_model, tokenizer
     
-    print(f"Loading model: {model_name}...")
-    config = MODELS[model_name]
+    if completer is not None:
+        return  # Already loaded
+    
+    print(f"Loading model: {current_model}...")
+    config = MODELS[current_model]
+    
+    # Import heavy dependencies only when needed
+    import torch
+    from src.ngram.ast_tokenizer import ASTTokenizer, VocabularyManager
+    from src.ngram.enhanced_model import EnhancedNGramModel
+    from src.ngram.lstm_model import LSTMTrainer
+    from src.ngram.hybrid_model import HybridCodeCompleter
+    from src.ngram.smart_completer import SmartCodeCompleter
     
     # Load vocabulary
     vocab = VocabularyManager()
@@ -71,7 +76,7 @@ def load_model(model_name='best'):
     # Create smart completer
     smart_completer = SmartCodeCompleter(completer)
     
-    print(f"✓ Model '{model_name}' ready!\n")
+    print(f"✓ Model '{current_model}' ready!\n")
 
 
 @app.route('/')
@@ -84,6 +89,8 @@ def index():
 def suggest():
     """Get code suggestions"""
     try:
+        ensure_models_loaded()
+        
         data = request.json
         code = data.get('code', '')
         top_k = data.get('top_k', 5)
@@ -116,6 +123,8 @@ def suggest():
 def smart_suggest():
     """Get smart code suggestions with full code completion"""
     try:
+        ensure_models_loaded()
+        
         data = request.json
         code = data.get('code', '')
         
@@ -152,6 +161,8 @@ def smart_suggest():
 def complete():
     """Auto-complete code"""
     try:
+        ensure_models_loaded()
+        
         data = request.json
         code = data.get('code', '')
         max_tokens = data.get('max_tokens', 10)
@@ -174,6 +185,8 @@ def complete():
 def model_info():
     """Get current model information"""
     try:
+        ensure_models_loaded()
+        
         info = {
             'current_model': current_model,
             'description': MODELS[current_model]['description'],
@@ -192,7 +205,7 @@ def model_info():
 @app.route('/api/model/switch', methods=['POST'])
 def switch_model():
     """Switch to a different model"""
-    global current_model
+    global current_model, completer
     
     try:
         data = request.json
@@ -201,8 +214,10 @@ def switch_model():
         if model_name not in MODELS:
             return jsonify({'error': f'Model "{model_name}" not found'}), 404
         
-        load_model(model_name)
+        # Reset models to force reload
+        completer = None
         current_model = model_name
+        ensure_models_loaded()
         
         return jsonify({
             'success': True,
@@ -216,9 +231,6 @@ def switch_model():
 
 
 if __name__ == '__main__':
-    # Load default model on startup
-    load_model('best')
-    
     print("\n" + "="*70)
     print("🚀 Code Suggestion Web App")
     print("="*70)
@@ -226,5 +238,6 @@ if __name__ == '__main__':
     print("✓ Open your browser and go to: http://localhost:5000")
     print("\nPress Ctrl+C to stop\n")
     
+    # Don't load models on startup - lazy load on first request
     # Run Flask app
     app.run(debug=True, host='0.0.0.0', port=5000, use_reloader=False)
